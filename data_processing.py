@@ -20,8 +20,12 @@ def generate_line_list(gen=None, folder_path="data", save=False, load=False):
     This function should convert the sentences to all lowercase and remove special characters.
     '''
     text_list = []
+    file_path = os.path.join(folder_path, "training_text.csv")
+
     if load:
-        with open(os.path.join(folder_path, "training_text.csv"), 'r', newline='') as f:
+        if not os.path.isfile(file_path):
+            raise FileNotFoundError("Run 'python data_processing.py --save' first before you load a csv that doesn't exist.")
+        with open(file_path, 'r', newline='') as f:
             for line in csv.reader(f):
                 text_list.append(line)
         return text_list
@@ -30,7 +34,7 @@ def generate_line_list(gen=None, folder_path="data", save=False, load=False):
         raise Exception("Please use a valid generator/iterator for line list generation.")
     
     if save:
-        f = open(os.path.join(folder_path, "training_text.csv"), 'w', newline='')
+        f = open(file_path, 'w', newline='')
         writer = csv.writer(f)
     for entry in gen:
         line = list(filter(None, re.sub(r'[^a-zA-Z0-9\s]+', '', entry["data"].replace("\n", "")).lower().split(' ')))
