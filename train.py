@@ -1,6 +1,6 @@
 from gensim.models import Word2Vec
 import gensim.downloader
-from model.model_cnn import SentimentModel
+from models.model_cnn import SentimentModel
 from data_processing import data_generator
 
 print("loading Word2Vec....")

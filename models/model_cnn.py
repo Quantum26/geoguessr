@@ -1,10 +1,9 @@
 import torch
 
-num_vectors = 20
 
 class SentimentModel(torch.nn.Module):
 
-    def __init__(self, embedding):
+    def __init__(self, embedding = lambda x: x):
         super(SentimentModel, self).__init__()
         self.embedding = embedding
         self.conv1 = torch.nn.Conv1d(in_channels=300, out_channels=64, kernel_size=3)
