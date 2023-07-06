@@ -1,13 +1,17 @@
 import json, os, sys, keyboard, csv, re, argparse
 
-def data_generator(folder_path="data", json_prefix="sentiment_analysis_data-", num_jsons=50, start_index=1): 
+def data_generator(folder_path="data", json_prefix="sentiment_analysis_data-", num_jsons=50, start_index=1, debug=False): 
     for n in range(start_index, start_index + num_jsons):
+        if debug:
+            print("Opening " + json_prefix + str(n) + ".json")
         with open(os.path.join(folder_path, json_prefix + str(n) + ".json")) as f:
             for line in f:
                 entry = json.loads(line)
                 yield entry
+        if debug:
+            print("Closed " + json_prefix + str(n) + ".json")
 
-def generate_line_list(gen=None, folder_path="data", save=False, load=False):
+def line_list_generator(gen=None, folder_path="data", save=False, load=False, sparse=False, max_files=50):
     '''
     Function to create a list of word groupings for Word2Vec and Model Training.
     Takes a generator/iterator of dictionaries such as:
@@ -18,33 +22,43 @@ def generate_line_list(gen=None, folder_path="data", save=False, load=False):
          ["i", "am", "also", "a", "sentence", "or", "am", "i"]]
     
     This function should convert the sentences to all lowercase and remove special characters.
+
+    For save function, will limit .csv files to 100000 "lines" each.
     '''
     text_list = []
-    file_path = os.path.join(folder_path, "training_text.csv")
+    file_path = os.path.join(folder_path, "training_text-")
 
     if load:
-        if not os.path.isfile(file_path):
-            raise FileNotFoundError("Run 'python data_processing.py --save' first before you load a csv that doesn't exist.")
-        with open(file_path, 'r', newline='') as f:
-            for line in csv.reader(f):
-                text_list.append(line)
-        return text_list
+        def lines_gen():
+            for n in range(1, max_files+1):
+                if not os.path.isfile(file_path + str(n) + ".csv"):
+                    break
+                with open(file_path + str(n) + ".csv", 'r', newline='') as f:
+                    for line in csv.reader(f):
+                        text_list.append(line)
+                yield text_list
+        return lines_gen()
     
     if gen is None:
         raise Exception("Please use a valid generator/iterator for line list generation.")
-    
-    if save:
-        f = open(file_path, 'w', newline='')
-        writer = csv.writer(f)
-    for entry in gen:
-        line = list(filter(None, re.sub(r'[^a-zA-Z0-9\s]+', '', entry["data"].replace("\n", "")).lower().split(' ')))
-        text_list.append(line)
-        if save:
-            writer.writerow(line)
-    if save:
-        f.close()
-
-    return text_list
+    def lines_gen():
+        f=None
+        writer=None
+        n=0
+        for i, entry in enumerate(gen):
+            if save and i%100000==0:
+                if n!=0:
+                    f.close()
+                n+=1
+                f = open(file_path  + str(n) + ".csv", 'w', newline='')
+                writer = csv.writer(f)
+            line = list(filter(None, re.sub(r'[^a-zA-Z0-9\s]+', ' ', entry["data"].replace("\n", " ").encode('ascii', 'ignore').decode('ascii')).lower().split(' ')))
+            if not sparse:
+                text_list.append(line)
+                yield text_list
+            if save:
+                writer.writerow(line)
+    return lines_gen()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -56,16 +70,14 @@ if __name__ == "__main__":
 
     if args.save:
         print("Saving line list as csv")
-        entry_generator = data_generator()
-        generate_line_list(entry_generator, save=True)
+        entry_generator = data_generator(num_jsons=70, debug=True)
+        line_generator = line_list_generator(entry_generator, save=True, sparse=True)
+        list(line_generator)
         print("Line list saved in 'data/training_text.csv'")
 
     if args.load:
         print("testing loaded sentence list")
-        def sentence_gen():
-            for entry in generate_line_list(gen=None, load=True):
-                yield entry
-        entry_gen = sentence_gen()
+        entry_gen = line_list_generator(load=True)
         keyboard.add_hotkey("enter", lambda : print(next(entry_gen)), suppress=True)
         print("Press enter to print next entry, press esc to leave.")
         keyboard.wait('esc', suppress=True)
