@@ -25,18 +25,18 @@ def line_list_generator(gen=None, folder_path="data", save=False, load=False, sp
 
     For save function, will limit .csv files to 100000 "lines" each.
     '''
-    text_list = []
     file_path = os.path.join(folder_path, "training_text-")
 
     if load:
         def lines_gen():
             for n in range(1, max_files+1):
+                line_list=[]
                 if not os.path.isfile(file_path + str(n) + ".csv"):
                     break
                 with open(file_path + str(n) + ".csv", 'r', newline='') as f:
                     for line in csv.reader(f):
-                        text_list.append(line)
-                yield text_list
+                        line_list.append(line)
+                yield line_list
         return lines_gen()
     
     if gen is None:
@@ -44,18 +44,23 @@ def line_list_generator(gen=None, folder_path="data", save=False, load=False, sp
     def lines_gen():
         f=None
         writer=None
-        n=0
+        entries = 100000
         for i, entry in enumerate(gen):
-            if save and i%100000==0:
-                if n!=0:
-                    f.close()
-                n+=1
-                f = open(file_path  + str(n) + ".csv", 'w', newline='')
-                writer = csv.writer(f)
+            if i%entries == 0:
+                text_list = []
+                if i>=entries:
+                    if not sparse:
+                        yield text_list
+                    if save:
+                        f.close()
+                if save:
+                    f = open(file_path  + str(int(i/entries)+1) + ".csv", 'w', newline='')
+                    writer = csv.writer(f)
+
             line = list(filter(None, re.sub(r'[^a-zA-Z0-9\s]+', ' ', entry["data"].replace("\n", " ").encode('ascii', 'ignore').decode('ascii')).lower().split(' ')))
+            
             if not sparse:
                 text_list.append(line)
-                yield text_list
             if save:
                 writer.writerow(line)
     return lines_gen()
@@ -78,7 +83,7 @@ if __name__ == "__main__":
     if args.load:
         print("testing loaded sentence list")
         entry_gen = line_list_generator(load=True)
-        keyboard.add_hotkey("enter", lambda : print(next(entry_gen)), suppress=True)
+        keyboard.add_hotkey("enter", lambda : print(len(next(entry_gen))), suppress=True)
         print("Press enter to print next entry, press esc to leave.")
         keyboard.wait('esc', suppress=True)
         keyboard.remove_all_hotkeys()
