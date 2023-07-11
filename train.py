@@ -10,15 +10,22 @@ print("loading Word2Vec....")
 w2vmodel = load_word2vec()
 print("Word2Vec loaded!")
 
-model = SentimentModel(w2vmodel)
+def embedding_layer(x):
+    return w2vmodel.wv[x]
+
+model = SentimentModel(embedding_layer)
 
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
 running_loss = 0.0
 for i, data in enumerate(data_generator()):
-    # get the inputs; data is a list of [inputs, labels]
-    inputs, labels = data
+    # get the inputs; data is a list of {label:value, data:value}
+    labels = []
+    inputs = []
+    for d in data:
+        labels.append(d["label"])
+        inputs.append(d["data"])
 
     # zero the parameter gradients
     optimizer.zero_grad()
