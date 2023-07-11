@@ -11,6 +11,16 @@ def data_generator(folder_path="data", json_prefix="sentiment_analysis_data-", n
         if debug:
             print("Closed " + json_prefix + str(n) + ".json")
 
+def minibatch_generator(minibatch=5, fp="data", jp="sentiment_analysis_data-", num=50, start=1, debug=False):
+    output = {"labels":[], "data":[]}
+    for entry in data_generator(folder_path=fp, json_prefix=jp, num_jsons=num, start_index=start, debug=debug):
+        output["labels"].append(entry["label"])
+        output["data"].append(entry["data"])
+        if len(output["labels"]) >= minibatch:
+            yield output
+            output["labels"] = []
+            output["data"] = []
+
 def line_list_generator(gen=None, folder_path="data", save=False, load=False, sparse=False, max_files=50):
     '''
     Function to create a list of word groupings for Word2Vec and Model Training.

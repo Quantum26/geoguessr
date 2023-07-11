@@ -2,7 +2,7 @@ from gensim.models import Word2Vec
 from word2vec import load_word2vec
 from models.model_cnn import SentimentModel
 import torch.nn as nn
-from data_processing import data_generator
+from data_processing import minibatch_generator
 
 import torch.optim as optim
 
@@ -19,13 +19,10 @@ criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
 running_loss = 0.0
-for i, data in enumerate(data_generator()):
-    # get the inputs; data is a list of {label:value, data:value}
-    labels = []
-    inputs = []
-    for d in data:
-        labels.append(d["label"])
-        inputs.append(d["data"])
+for i, data in enumerate(minibatch_generator(minibatch=5)):
+    # get the inputs; data is a dictionary of lists {"labels":[], "data":[]}
+    labels = data["labels"]
+    inputs = data["data"]
 
     # zero the parameter gradients
     optimizer.zero_grad()
